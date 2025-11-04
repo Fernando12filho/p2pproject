@@ -11,7 +11,7 @@ class Node:
         self.shared_dir = shared_dir
 
         # The access to these shared data structures must be protected with a lock in multithreading
-        # self.peers = []  # List of connected peers (peer_id=node_id)
+        self.peers = []  # List of connected peers (peer_id=node_id)
         # the keys of self.request_sockets are the list of connected peers
         self.response_sockets = {} # {peer_id: response_socket}
         self.request_sockets = {}  # {peer_id: request_socket}
@@ -32,6 +32,7 @@ class Node:
                 response_socket, addr = self.server_socket.accept()
                 with self.lock:
                   self.response_sockets[addr[1]] = response_socket
+                  self.peers.append(addr[1])
                 print(f"Connection established with peer {addr[1]}")
                 response_handler = threading.Thread(
                     target=self.handle_peer, args=(response_socket,)
@@ -54,6 +55,41 @@ class Node:
     def handle_peer(self, response_socket):
         while not self.evExit.is_set():
             pass
+        
+    def scan_peers(self):
+        # Function to discover active peers in the network
+        for port in range(5000, 5010):  # Example range of ports to scan
+            if port == self.port:
+                continue
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(0.5)
+                s.connect((self.host, port))
+                s.close()
+                with self.lock:
+                    self.request_sockets[port] = s
+                    if port not in self.peers:
+                        self.peers.append(port)
+                print(f"Peer found at port {port}")
+            except (ConnectionRefusedError, socket.timeout):
+                continue
+        pass
+    
+    def connect_peer(self):
+        # Function to connect to a peer given its peer_id (port)
+        peer_id = int(input("Enter peer_id (port) to connect: "))
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((self.host, peer_id))
+            with self.lock:
+                self.request_sockets[peer_id] = s
+                if peer_id not in self.peers:
+                    self.peers.append(peer_id)
+            print(f"Connected to peer {peer_id}")
+        except Exception as e:
+            print(f"Failed to connect to peer {peer_id}: {e}")
+        
+    
 
     # Function to run the console for interaction
     def console(self):
@@ -66,13 +102,21 @@ class Node:
             
             # === Task 2: discover active peers and list connected peers ===
             elif commands[0] == "scan": # discover active peers
-                pass
+                self.scan_peers()
+                
             elif commands[0] == "lp":  # list peers
-                pass
+                print("Connected peers:")
+                for pid in self.request_sockets.keys():
+                    print(f" → {pid}")
+                for pid in self.response_sockets.keys():
+                    print(f" ← {pid}")
+                print(self.peers)
+
 
             # === handle peer connection and disconnection ===
             elif commands[0] == "connect":  # connect peer_id
-                pass
+                self.connect_peer()
+                
             elif commands[0] == "disconnect":  # disconnect peer_id
                 pass            
 
