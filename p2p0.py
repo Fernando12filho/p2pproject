@@ -88,6 +88,21 @@ class Node:
             print(f"Connected to peer {peer_id}")
         except Exception as e:
             print(f"Failed to connect to peer {peer_id}: {e}")
+
+    def disconnect_peer(self):
+        # Function to disconnect from a peer given its peer_id (port)
+        peer_id = int(input("Enter peer_id (port) to disconnect: "))
+        with self.lock:
+            if peer_id in self.request_sockets:
+                self.request_sockets[peer_id].close()
+                del self.request_sockets[peer_id]
+                print(f"Disconnected from peer {peer_id}")
+            else:
+                print(f"No connection found for peer {peer_id}") 
+
+    def search_files(self, filename):
+        # Function to search for files on all connected peers
+        pass
         
     
 
@@ -118,7 +133,7 @@ class Node:
                 self.connect_peer()
                 
             elif commands[0] == "disconnect":  # disconnect peer_id
-                pass            
+                self.disconnect_peer()
 
             # === Task 3: search for files on all connected peers ===
             elif commands[0] == "sf":  # search for files
